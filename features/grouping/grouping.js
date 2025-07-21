@@ -1,6 +1,6 @@
 // features/grouping/grouping.js
 
-export function initGrouping(container, onBack) {
+window.initGrouping = function(container, onBack) {
   container.innerHTML = `
     <div class="card">
       <h2>AI Tab Grouping</h2>

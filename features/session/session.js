@@ -1,7 +1,7 @@
 // features/session/session.js
 // import { queryTabs, getFromStorage, setInStorage, createTab } from '../../shared/chromeUtils.js';
 
-export function initSession(container, onBack) {
+window.initSession = function(container, onBack) {
   container.innerHTML = `
     <div class="card">
       <h2>Session Save & Restore</h2>

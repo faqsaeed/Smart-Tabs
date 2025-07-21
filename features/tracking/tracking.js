@@ -1,7 +1,7 @@
 // features/tracking/tracking.js
 // import { queryTabs } from '../../shared/chromeUtils.js';
 
-export function initTracking(container, onBack) {
+window.initTracking = function(container, onBack) {
   container.innerHTML = `
     <div class="card">
       <h2>Tab Time Tracking</h2>
