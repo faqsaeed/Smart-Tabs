@@ -7,6 +7,7 @@ window.initTracking = function(container, onBack) {
       <h2>Tab Time Tracking</h2>
       <button id="startTrackingBtn">Start Tracking</button>
       <button id="stopTrackingBtn">Stop Tracking</button>
+      <button id="viewResultsBtn">View Results</button>
       <button id="refreshTrackingBtn">Refresh Results</button>
       <button id="exportCSVBtn">Export CSV</button>
       <div id="trackingStatus"></div>
@@ -26,6 +27,7 @@ window.initTracking = function(container, onBack) {
       showResults();
     });
   };
+  document.getElementById('viewResultsBtn').onclick = showResults;
   document.getElementById('refreshTrackingBtn').onclick = showResults;
   document.getElementById('exportCSVBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'EXPORT_CSV'}, response => {
