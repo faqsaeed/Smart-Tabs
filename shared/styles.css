@@ -1,0 +1,40 @@
+:root {
+  --primary: #0078d7;
+  --primary-dark: #005fa3;
+  --bg: #fff;
+  --text: #222;
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --transition: background 0.2s;
+}
+body, html {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+button, .card {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+button {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  font-size: 1em;
+  cursor: pointer;
+  margin: 8px 0;
+  width: 100%;
+}
+button:hover {
+  background: var(--primary-dark);
+}
+.card {
+  background: #f7fafd;
+  padding: 16px;
+  margin: 12px 0;
+  text-align: center;
+} 
