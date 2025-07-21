@@ -1,20 +1,20 @@
 // shared/chromeUtils.js
-export async function queryTabs(query = {}) {
+self.queryTabs = async function(query = {}) {
   return new Promise(resolve => {
     chrome.tabs.query(query, resolve);
   });
 }
-export async function getFromStorage(keys) {
+self.getFromStorage = async function(keys) {
   return new Promise(resolve => {
     chrome.storage.local.get(keys, resolve);
   });
 }
-export async function setInStorage(obj) {
+self.setInStorage = async function(obj) {
   return new Promise(resolve => {
     chrome.storage.local.set(obj, resolve);
   });
 }
-export async function createTab(tabProps) {
+self.createTab = async function(tabProps) {
   return new Promise(resolve => {
     chrome.tabs.create(tabProps, resolve);
   });

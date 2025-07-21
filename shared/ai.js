@@ -8,7 +8,7 @@ const OPENAI_API_URL = 'https://smart-tabs-backend.vercel.app/api/chat';
  * @param {Array<{title: string, url: string}>} tabs
  * @returns {Promise<Array<Array<number>>>} Array of groups, each group is an array of tab indices
  */
-export async function groupTabsWithAI(tabs) {
+self.groupTabsWithAI = async function(tabs) {
   const tabList = tabs.map((tab, i) => `${i + 1}. ${tab.title} (${tab.url})`).join('\n');
   const prompt = `
   You will be given a numbered list of browser tabs with titles and URLs.
