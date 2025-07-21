@@ -15,6 +15,6 @@
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "TabTrackr"
+    "default_title": "TabTracker"
   }
 } 
