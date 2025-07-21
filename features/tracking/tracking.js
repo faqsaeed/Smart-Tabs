@@ -7,21 +7,26 @@ window.initTracking = function(container, onBack) {
       <h2>Tab Time Tracking</h2>
       <button id="startTrackingBtn">Start Tracking</button>
       <button id="stopTrackingBtn">Stop Tracking</button>
+      <button id="refreshTrackingBtn">Refresh Results</button>
       <button id="exportCSVBtn">Export CSV</button>
       <div id="trackingStatus"></div>
+      <div id="trackingResults"></div>
       <button id="backBtn">Back</button>
     </div>
   `;
   document.getElementById('startTrackingBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'START_TRACKING'}, () => {
       setStatus('Tracking started.');
+      showResults();
     });
   };
   document.getElementById('stopTrackingBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'STOP_TRACKING'}, () => {
       setStatus('Tracking stopped.');
+      showResults();
     });
   };
+  document.getElementById('refreshTrackingBtn').onclick = showResults;
   document.getElementById('exportCSVBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'EXPORT_CSV'}, response => {
       if (response && response.csv) {
@@ -47,4 +52,16 @@ window.initTracking = function(container, onBack) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+  function showResults() {
+    chrome.runtime.sendMessage({type: 'GET_TRACKING_DATA'}, response => {
+      const resultsDiv = document.getElementById('trackingResults');
+      if (response && response.data && response.data.length) {
+        resultsDiv.innerHTML = '<b>Tab Tracking Results:</b><br>' +
+          response.data.map(tab => `${tab.title} (${tab.url}): ${tab.seconds} sec`).join('<br>');
+      } else {
+        resultsDiv.innerHTML = '<i>No tracking data available.</i>';
+      }
+    });
+  }
+  showResults();
 } 

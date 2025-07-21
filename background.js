@@ -37,11 +37,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const tabSessions = result.tabSessions || {};
       const sessionName = request.sessionName || Object.keys(tabSessions).pop();
       const sessionTabs = tabSessions[sessionName] || [];
-      for (const tab of sessionTabs) {
-        chrome.tabs.create({url: tab.url});
-      }
-      sendResponse({status: 'success', sessionName, count: sessionTabs.length});
+      // Close all current tabs before opening session tabs
+      chrome.tabs.query({currentWindow: true}, (currentTabs) => {
+        const currentTabIds = currentTabs.map(tab => tab.id);
+        chrome.tabs.remove(currentTabIds, () => {
+          for (const tab of sessionTabs) {
+            chrome.tabs.create({url: tab.url});
+          }
+          sendResponse({status: 'success', sessionName, count: sessionTabs.length});
+        });
+      });
     });
+    return true;
+  } else if (request.type === 'GET_TRACKING_DATA') {
+    // Return tabTimes as an array for UI display
+    const data = Object.values(tabTimes).map(tab => ({
+      title: tab.title,
+      url: tab.url,
+      seconds: Math.round((tab.total || 0) / 1000)
+    }));
+    sendResponse({status: 'success', data});
     return true;
   } else if (request.type === 'START_TRACKING') {
     trackingActive = true;
