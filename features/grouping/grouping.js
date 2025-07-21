@@ -1,6 +1,4 @@
 // features/grouping/grouping.js
-import { groupTabsWithAI } from '../../shared/ai.js';
-import { queryTabs } from '../../shared/chromeUtils.js';
 
 export function initGrouping(container, onBack) {
   container.innerHTML = `

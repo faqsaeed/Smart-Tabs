@@ -1,5 +1,5 @@
 // features/session/session.js
-import { queryTabs, getFromStorage, setInStorage, createTab } from '../../shared/chromeUtils.js';
+// import { queryTabs, getFromStorage, setInStorage, createTab } from '../../shared/chromeUtils.js';
 
 export function initSession(container, onBack) {
   container.innerHTML = `

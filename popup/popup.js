@@ -30,13 +30,17 @@ Object.entries(features).forEach(([key, {card, html, js, init}]) => {
     // Load HTML
     const htmlResp = await fetch(html);
     featureContainer.innerHTML = await htmlResp.text();
-    // Dynamically import JS and call init
-    const mod = await import(js);
-    const container = featureContainer.querySelector('div');
-    mod[init](container, () => {
-      featureContainer.style.display = 'none';
-      dashboard.style.display = '';
-      featureContainer.innerHTML = '';
-    });
+    // Dynamically load JS as a classic script
+    const script = document.createElement('script');
+    script.src = js;
+    script.onload = () => {
+      const container = featureContainer.querySelector('div');
+      window[init](container, () => {
+        featureContainer.style.display = 'none';
+        dashboard.style.display = '';
+        featureContainer.innerHTML = '';
+      });
+    };
+    featureContainer.appendChild(script);
   };
 }); 

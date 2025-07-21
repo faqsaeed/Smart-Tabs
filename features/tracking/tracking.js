@@ -1,5 +1,5 @@
 // features/tracking/tracking.js
-import { queryTabs } from '../../shared/chromeUtils.js';
+// import { queryTabs } from '../../shared/chromeUtils.js';
 
 export function initTracking(container, onBack) {
   container.innerHTML = `
