@@ -1,8 +1,7 @@
 // shared/ai.js
 // Handles OpenAI integration and tab grouping logic for TabTrackr
 
-const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY';
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_API_URL = 'https://smart-tabs-backend.vercel.app/api/chat';
 
 /**
  * Groups tabs using OpenAI GPT-4 based on title/URL similarity.
@@ -11,7 +10,17 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
  */
 export async function groupTabsWithAI(tabs) {
   const tabList = tabs.map((tab, i) => `${i + 1}. ${tab.title} (${tab.url})`).join('\n');
-  const prompt = `Group the following browser tabs by topic or similarity. Return the result as arrays of tab indices (starting from 0), one group per line.\n\n${tabList}`;
+  const prompt = `
+  You will be given a numbered list of browser tabs with titles and URLs.
+  Your job is to group similar tabs based on topic or content.
+  Return ONLY a JSON array of arrays. Each sub-array contains the indices (starting from 0) of tabs that belong to the same group.
+  Do not add explanation or extra text. Just return valid JSON.
+  
+  Example output: [[0,2],[1,3,4]]
+  
+  Tabs:
+  ${tabList}
+  `;
   const body = {
     model: 'gpt-4',
     messages: [

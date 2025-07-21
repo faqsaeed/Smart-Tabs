@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "TabTrackr",
+  "name": "Smart Tabs",
   "version": "1.0",
   "description": "Group, save, and track your Chrome tabs with AI.",
   "permissions": [
