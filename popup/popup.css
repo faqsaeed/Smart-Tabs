@@ -1,0 +1,18 @@
+.container {
+  padding: 16px;
+  width: 270px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+h1 {
+  font-size: 1.3em;
+  margin-bottom: 16px;
+}
+#dashboard {
+  margin-bottom: 12px;
+}
+#feature-container {
+  min-height: 120px;
+} 
