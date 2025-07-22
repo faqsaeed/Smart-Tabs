@@ -96,9 +96,12 @@ window.initTracking = function(container, onBack) {
     chrome.runtime.sendMessage({type: 'GET_TRACKING_DATA'}, response => {
       const resultsDiv = document.getElementById('trackingResults');
       if (response && response.data && response.data.length) {
-        let table = `<table class='cute-table'><tr><th></th><th>Tab Title</th><th>Time Used (sec)</th></tr>`;
+        let table = `<table class='cute-table'><tr><th></th><th>Tab Title</th><th>Time Used</th></tr>`;
         response.data.forEach((tab, i) => {
-          table += `<tr><td><span class='tab-icon'></span></td><td class='tab-title'>${tab.title}</td><td>${tab.seconds}</td></tr>`;
+          const min = Math.floor(tab.seconds / 60);
+          const sec = tab.seconds % 60;
+          const timeStr = `${min}:${sec.toString().padStart(2, '0')}`;
+          table += `<tr><td><span class='tab-icon'></span></td><td class='tab-title'>${tab.title}</td><td>${timeStr}</td></tr>`;
         });
         table += `</table>`;
         resultsDiv.innerHTML = `<b>Tab Tracking Results:</b><br>` + table;
