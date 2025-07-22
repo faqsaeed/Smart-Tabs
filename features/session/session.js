@@ -2,15 +2,15 @@
 // import { queryTabs, getFromStorage, setInStorage, createTab } from '../../shared/chromeUtils.js';
 
 window.initSession = function(container, onBack) {
-  let editMode = false;
+  let mode = 'default'; // 'default', 'restore', 'edit'
   container.innerHTML = `
     <div class="card">
       <h2>Session Save & Restore</h2>
-      <input id="sessionNameInput" type="text" placeholder="Session name (optional)" style="width: 70%; margin-bottom: 8px;" />
       <button id="saveSessionBtn">Save Session</button>
+      <button id="restoreSessionBtn">Restore Session</button>
       <button id="editSessionsBtn">Edit Saved Sessions</button>
-      <div id="sessionList"></div>
       <button id="backBtn">Back</button>
+      <div id="sessionList"></div>
     </div>
     <style>
       .session-row { display: flex; align-items: center; margin: 4px 0; }
@@ -20,22 +20,34 @@ window.initSession = function(container, onBack) {
     </style>
   `;
   document.getElementById('saveSessionBtn').onclick = async () => {
-    const nameInput = document.getElementById('sessionNameInput');
-    const sessionName = nameInput.value.trim() || `Session-${Date.now()}`;
+    const sessionName = prompt('Enter a name for this session (optional):') || `Session-${Date.now()}`;
     chrome.runtime.sendMessage({type: 'SAVE_SESSION', sessionName}, response => {
-      nameInput.value = '';
       updateSessionList();
     });
   };
-  document.getElementById('editSessionsBtn').onclick = () => {
-    editMode = !editMode;
+  document.getElementById('restoreSessionBtn').onclick = () => {
+    mode = 'restore';
     updateSessionList();
   };
-  document.getElementById('backBtn').onclick = onBack;
+  document.getElementById('editSessionsBtn').onclick = () => {
+    mode = 'edit';
+    updateSessionList();
+  };
+  document.getElementById('backBtn').onclick = () => {
+    if (mode === 'default') onBack();
+    else {
+      mode = 'default';
+      updateSessionList();
+    }
+  };
 
   async function updateSessionList() {
     const { tabSessions = {} } = await getFromStorage(['tabSessions']);
     const listDiv = document.getElementById('sessionList');
+    if (mode === 'default') {
+      listDiv.innerHTML = '';
+      return;
+    }
     if (!Object.keys(tabSessions).length) {
       listDiv.innerHTML = '<i>No saved sessions.</i>';
       return;
@@ -44,7 +56,7 @@ window.initSession = function(container, onBack) {
     Object.entries(tabSessions).forEach(([name, tabs]) => {
       const row = document.createElement('div');
       row.className = 'session-row';
-      if (editMode) {
+      if (mode === 'edit') {
         // Edit mode: show rename input and delete button
         const input = document.createElement('input');
         input.className = 'session-edit-input';
@@ -76,8 +88,8 @@ window.initSession = function(container, onBack) {
           updateSessionList();
         };
         row.appendChild(delBtn);
-      } else {
-        // Normal mode: show name and restore button
+      } else if (mode === 'restore') {
+        // Restore mode: show name and restore button
         const nameSpan = document.createElement('span');
         nameSpan.className = 'session-name';
         nameSpan.textContent = name;
@@ -102,4 +114,5 @@ window.initSession = function(container, onBack) {
     });
   }
   updateSessionList();
+} 
 } 
