@@ -7,12 +7,11 @@ window.initTracking = function(container, onBack) {
     container = document.getElementById('tracking-feature') || document.body;
   }
   container.innerHTML = `
-    <div class="card">
+    <div class="card" id="trackingCard">
       <h2>Tab Time Tracking</h2>
       <button id="startTrackingBtn">Start Tracking</button>
       <button id="stopTrackingBtn">Stop Tracking</button>
       <button id="viewResultsBtn">View Results</button>
-      <button id="refreshTrackingBtn">Refresh Results</button>
       <button id="exportCSVBtn">Export CSV</button>
       <div id="trackingStatus"></div>
       <div id="trackingResults" style="margin-top: 12px;"></div>
@@ -65,8 +64,15 @@ window.initTracking = function(container, onBack) {
       showResults();
     });
   };
-  document.getElementById('viewResultsBtn').onclick = showResults;
-  document.getElementById('refreshTrackingBtn').onclick = showResults;
+  document.getElementById('viewResultsBtn').onclick = function() {
+    showResults();
+    // Hide tracking controls, show only results, export, and back
+    document.getElementById('startTrackingBtn').style.display = 'none';
+    document.getElementById('stopTrackingBtn').style.display = 'none';
+    document.getElementById('viewResultsBtn').style.display = 'none';
+    document.getElementById('trackingStatus').style.display = 'none';
+    // Results, export, and back remain visible
+  };
   document.getElementById('exportCSVBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'EXPORT_CSV'}, response => {
       if (response && response.csv) {
