@@ -71,9 +71,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               console.warn('Could not open tab:', tab.url, e);
             }
           }
-          // Remove the previously active tab (now a leftover)
+          // Instead of closing the previously active tab, update it to chrome://newtab
           if (activeTab && activeTab.id) {
-            chrome.tabs.remove(activeTab.id);
+            chrome.tabs.update(activeTab.id, {url: 'chrome://newtab'});
           }
           // Switch to the tab that was active when the session was saved
           if (createdTabIds.length > 0 && activeTabIndex >= 0 && activeTabIndex < createdTabIds.length) {
