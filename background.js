@@ -20,15 +20,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // async
   } else if (request.type === 'SAVE_SESSION') {
-    // Save all tabs in all windows
+    // Save all tabs in all windows, and store the active tab index
     chrome.tabs.query({}, (tabs) => {
-      const sessionTabs = tabs.map(tab => ({title: tab.title, url: tab.url, windowId: tab.windowId}));
-      const sessionName = request.sessionName || `Session-${Date.now()}`;
-      chrome.storage.local.get(['tabSessions'], (result) => {
-        const tabSessions = result.tabSessions || {};
-        tabSessions[sessionName] = sessionTabs;
-        chrome.storage.local.set({tabSessions}, () => {
-          sendResponse({status: 'success', sessionName});
+      chrome.tabs.query({active: true, currentWindow: true}, (activeTabs) => {
+        const sessionTabs = tabs.map(tab => ({title: tab.title, url: tab.url, windowId: tab.windowId, id: tab.id}));
+        const activeTabId = activeTabs.length > 0 ? activeTabs[0].id : null;
+        const activeTabIndex = sessionTabs.findIndex(tab => tab.id === activeTabId);
+        const sessionName = request.sessionName || `Session-${Date.now()}`;
+        chrome.storage.local.get(['tabSessions'], (result) => {
+          const tabSessions = result.tabSessions || {};
+          tabSessions[sessionName] = { tabs: sessionTabs, activeTabIndex };
+          chrome.storage.local.set({tabSessions}, () => {
+            sendResponse({status: 'success', sessionName});
+          });
         });
       });
     });
@@ -37,7 +41,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.storage.local.get(['tabSessions'], async (result) => {
       const tabSessions = result.tabSessions || {};
       const sessionName = request.sessionName || Object.keys(tabSessions).pop();
-      const sessionTabs = tabSessions[sessionName] || [];
+      const sessionData = tabSessions[sessionName] || {};
+      const sessionTabs = sessionData.tabs || [];
+      const activeTabIndex = sessionData.activeTabIndex || 0;
       // Get all current tabs
       chrome.tabs.query({}, async (currentTabs) => {
         // Get the extension's own tab (if any)
@@ -46,20 +52,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           const views = await chrome.tabs.query({url: chrome.runtime.getURL('*')});
           if (views.length > 0) extensionTabId = views[0].id;
         } catch (e) {}
-        // Close all tabs except the extension's own tab
-        const tabsToClose = currentTabs.map(tab => tab.id).filter(id => id !== extensionTabId);
+        // Get the currently active tab
+        const activeTab = currentTabs.find(tab => tab.active);
+        // Close all tabs except the currently active one and the extension tab
+        const tabsToClose = currentTabs.map(tab => tab.id).filter(id => id !== extensionTabId && id !== (activeTab && activeTab.id));
         chrome.tabs.remove(tabsToClose, async () => {
           // Deduplicate URLs to avoid opening the same tab multiple times
           const seen = new Set();
+          let createdTabIds = [];
           for (const tab of sessionTabs) {
             if (!tab.url || seen.has(tab.url)) continue;
             seen.add(tab.url);
             try {
-              await chrome.tabs.create({url: tab.url});
+              const created = await chrome.tabs.create({url: tab.url});
+              createdTabIds.push(created.id);
             } catch (e) {
               // Handle errors (e.g., permission, blocked URLs)
               console.warn('Could not open tab:', tab.url, e);
             }
+          }
+          // Remove the previously active tab (now a leftover)
+          if (activeTab && activeTab.id) {
+            chrome.tabs.remove(activeTab.id);
+          }
+          // Switch to the tab that was active when the session was saved
+          if (createdTabIds.length > 0 && activeTabIndex >= 0 && activeTabIndex < createdTabIds.length) {
+            chrome.tabs.update(createdTabIds[activeTabIndex], {active: true});
           }
           sendResponse({status: 'success', sessionName, count: seen.size});
         });
