@@ -115,4 +115,3 @@ window.initSession = function(container, onBack) {
   }
   updateSessionList();
 } 
-} 
