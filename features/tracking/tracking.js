@@ -2,6 +2,10 @@
 // import { queryTabs } from '../../shared/chromeUtils.js';
 
 window.initTracking = function(container, onBack) {
+  // If the container is empty (as in index.html), use it; otherwise, fallback to document.body
+  if (!container) {
+    container = document.getElementById('tracking-feature') || document.body;
+  }
   container.innerHTML = `
     <div class="card">
       <h2>Tab Time Tracking</h2>
@@ -11,9 +15,43 @@ window.initTracking = function(container, onBack) {
       <button id="refreshTrackingBtn">Refresh Results</button>
       <button id="exportCSVBtn">Export CSV</button>
       <div id="trackingStatus"></div>
-      <div id="trackingResults"></div>
+      <div id="trackingResults" style="margin-top: 12px;"></div>
       <button id="backBtn">Back</button>
     </div>
+    <style>
+      .cute-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+        background: #f7fafd;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      }
+      .cute-table th, .cute-table td {
+        padding: 8px 10px;
+        text-align: left;
+      }
+      .cute-table th {
+        background: #e3f0fc;
+        font-weight: bold;
+      }
+      .cute-table tr:nth-child(even) {
+        background: #f0f7ff;
+      }
+      .tab-icon {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        background: #b3e5fc;
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+      .tab-title {
+        font-weight: 500;
+      }
+    </style>
   `;
   document.getElementById('startTrackingBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'START_TRACKING'}, () => {
@@ -58,8 +96,12 @@ window.initTracking = function(container, onBack) {
     chrome.runtime.sendMessage({type: 'GET_TRACKING_DATA'}, response => {
       const resultsDiv = document.getElementById('trackingResults');
       if (response && response.data && response.data.length) {
-        resultsDiv.innerHTML = '<b>Tab Tracking Results:</b><br>' +
-          response.data.map(tab => `${tab.title} (${tab.url}): ${tab.seconds} sec`).join('<br>');
+        let table = `<table class='cute-table'><tr><th></th><th>Tab Title</th><th>Time Used (sec)</th></tr>`;
+        response.data.forEach((tab, i) => {
+          table += `<tr><td><span class='tab-icon'></span></td><td class='tab-title'>${tab.title}</td><td>${tab.seconds}</td></tr>`;
+        });
+        table += `</table>`;
+        resultsDiv.innerHTML = `<b>Tab Tracking Results:</b><br>` + table;
       } else {
         resultsDiv.innerHTML = '<i>No tracking data available.</i>';
       }

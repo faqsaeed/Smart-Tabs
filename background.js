@@ -62,10 +62,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     trackingActive = true;
     tabTimes = {};
     trackingStartTime = Date.now();
-    chrome.tabs.query({}, (tabs) => {
-      tabs.forEach(tab => {
+    // Only start timer for the currently active tab
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      if (tabs.length > 0) {
+        const tab = tabs[0];
         tabTimes[tab.id] = { start: Date.now(), total: 0, title: tab.title, url: tab.url };
-      });
+      }
     });
     sendResponse({status: 'tracking_started'});
     return true;
@@ -95,12 +97,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.tabs.onActivated.addListener(activeInfo => {
   if (!trackingActive) return;
   const now = Date.now();
+  // Pause all running timers
   Object.keys(tabTimes).forEach(tabId => {
     if (tabTimes[tabId].start) {
       tabTimes[tabId].total += now - tabTimes[tabId].start;
       tabTimes[tabId].start = null;
     }
   });
+  // Start timer for the newly active tab
   tabTimes[activeInfo.tabId] = tabTimes[activeInfo.tabId] || { total: 0 };
   tabTimes[activeInfo.tabId].start = now;
   chrome.tabs.get(activeInfo.tabId, tab => {
