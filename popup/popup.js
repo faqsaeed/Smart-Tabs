@@ -34,12 +34,12 @@ Object.entries(features).forEach(([key, {card, html, js, init}]) => {
     const script = document.createElement('script');
     script.src = js;
     script.onload = () => {
-      const container = featureContainer.querySelector('div');
+    const container = featureContainer.querySelector('div');
       window[init](container, () => {
-        featureContainer.style.display = 'none';
-        dashboard.style.display = '';
-        featureContainer.innerHTML = '';
-      });
+      featureContainer.style.display = 'none';
+      dashboard.style.display = '';
+      featureContainer.innerHTML = '';
+    });
     };
     featureContainer.appendChild(script);
   };
