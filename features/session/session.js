@@ -12,13 +12,10 @@ window.initSession = function(container, onBack) {
     </div>
   `;
   document.getElementById('saveSessionBtn').onclick = async () => {
-    const tabs = await queryTabs({currentWindow: true});
-    const sessionTabs = tabs.map(tab => ({title: tab.title, url: tab.url}));
-    const sessionName = prompt('Enter a name for this session (optional):') || `Session-${Date.now()}`;
-    const { tabSessions = {} } = await getFromStorage(['tabSessions']);
-    tabSessions[sessionName] = sessionTabs;
-    await setInStorage({tabSessions});
-    updateSessionList();
+    // Save all tabs in all windows
+    chrome.runtime.sendMessage({type: 'SAVE_SESSION'}, response => {
+      updateSessionList();
+    });
   };
   document.getElementById('restoreSessionBtn').onclick = async () => {
     const { tabSessions = {} } = await getFromStorage(['tabSessions']);
@@ -32,9 +29,13 @@ window.initSession = function(container, onBack) {
       alert('Invalid session name.');
       return;
     }
-    for (const tab of tabSessions[sessionName]) {
-      await createTab({url: tab.url});
-    }
+    chrome.runtime.sendMessage({type: 'RESTORE_SESSION', sessionName}, response => {
+      if (response && response.status === 'success') {
+        alert(`Restored session '${sessionName}' with ${response.count} tabs.`);
+      } else {
+        alert('Failed to restore session.');
+      }
+    });
   };
   document.getElementById('backBtn').onclick = onBack;
   async function updateSessionList() {

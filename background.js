@@ -20,8 +20,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // async
   } else if (request.type === 'SAVE_SESSION') {
-    chrome.tabs.query({currentWindow: true}, (tabs) => {
-      const sessionTabs = tabs.map(tab => ({title: tab.title, url: tab.url}));
+    // Save all tabs in all windows
+    chrome.tabs.query({}, (tabs) => {
+      const sessionTabs = tabs.map(tab => ({title: tab.title, url: tab.url, windowId: tab.windowId}));
       const sessionName = request.sessionName || `Session-${Date.now()}`;
       chrome.storage.local.get(['tabSessions'], (result) => {
         const tabSessions = result.tabSessions || {};
@@ -33,18 +34,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   } else if (request.type === 'RESTORE_SESSION') {
-    chrome.storage.local.get(['tabSessions'], (result) => {
+    chrome.storage.local.get(['tabSessions'], async (result) => {
       const tabSessions = result.tabSessions || {};
       const sessionName = request.sessionName || Object.keys(tabSessions).pop();
       const sessionTabs = tabSessions[sessionName] || [];
-      // Close all current tabs before opening session tabs
-      chrome.tabs.query({currentWindow: true}, (currentTabs) => {
-        const currentTabIds = currentTabs.map(tab => tab.id);
-        chrome.tabs.remove(currentTabIds, () => {
+      // Get all current tabs
+      chrome.tabs.query({}, async (currentTabs) => {
+        // Get the extension's own tab (if any)
+        let extensionTabId = null;
+        try {
+          const views = await chrome.tabs.query({url: chrome.runtime.getURL('*')});
+          if (views.length > 0) extensionTabId = views[0].id;
+        } catch (e) {}
+        // Close all tabs except the extension's own tab
+        const tabsToClose = currentTabs.map(tab => tab.id).filter(id => id !== extensionTabId);
+        chrome.tabs.remove(tabsToClose, async () => {
+          // Deduplicate URLs to avoid opening the same tab multiple times
+          const seen = new Set();
           for (const tab of sessionTabs) {
-            chrome.tabs.create({url: tab.url});
+            if (!tab.url || seen.has(tab.url)) continue;
+            seen.add(tab.url);
+            try {
+              await chrome.tabs.create({url: tab.url});
+            } catch (e) {
+              // Handle errors (e.g., permission, blocked URLs)
+              console.warn('Could not open tab:', tab.url, e);
+            }
           }
-          sendResponse({status: 'success', sessionName, count: sessionTabs.length});
+          sendResponse({status: 'success', sessionName, count: seen.size});
         });
       });
     });
