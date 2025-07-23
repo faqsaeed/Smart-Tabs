@@ -38,49 +38,80 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   } else if (request.type === 'RESTORE_SESSION') {
+    // --- Robust, Safe Session Restore Logic ---
     chrome.storage.local.get(['tabSessions'], async (result) => {
       const tabSessions = result.tabSessions || {};
       const sessionName = request.sessionName || Object.keys(tabSessions).pop();
-      const sessionData = tabSessions[sessionName] || {};
-      const sessionTabs = sessionData.tabs || [];
-      const activeTabIndex = sessionData.activeTabIndex || 0;
-      // Get all current tabs
-      chrome.tabs.query({}, async (currentTabs) => {
-        // Get the extension's own tab (if any)
-        let extensionTabId = null;
+      const sessionData = tabSessions[sessionName];
+      if (!sessionData) {
+        console.error('No session data found for', sessionName);
+        sendResponse({status: 'error', message: 'No session data found'});
+        return;
+      }
+      // Support both {tabs, activeTabIndex} and legacy [{title, url}]
+      const sessionTabs = Array.isArray(sessionData) ? sessionData : sessionData.tabs || [];
+      chrome.tabs.query({}, async (allTabs) => {
         try {
-          const views = await chrome.tabs.query({url: chrome.runtime.getURL('*')});
-          if (views.length > 0) extensionTabId = views[0].id;
-        } catch (e) {}
-        // Get the currently active tab
-        const activeTab = currentTabs.find(tab => tab.active);
-        // Close all tabs except the currently active one and the extension tab
-        const tabsToClose = currentTabs.map(tab => tab.id).filter(id => id !== extensionTabId && id !== (activeTab && activeTab.id));
-        chrome.tabs.remove(tabsToClose, async () => {
-          // Deduplicate URLs to avoid opening the same tab multiple times
+          const extensionUrl = chrome.runtime.getURL('');
+          // Group tabs by windowId
+          const tabsByWindow = {};
+          allTabs.forEach(tab => {
+            if (!tabsByWindow[tab.windowId]) tabsByWindow[tab.windowId] = [];
+            tabsByWindow[tab.windowId].push(tab);
+          });
+
+          let tabsToClose = [];
+          Object.values(tabsByWindow).forEach(tabsInWindow => {
+            // Exclude pinned and extension tabs
+            const normalTabs = tabsInWindow.filter(tab =>
+              !tab.pinned &&
+              !(tab.url && tab.url.startsWith(extensionUrl))
+            );
+            // If only one normal tab left, don't close it (leave one tab per window)
+            if (normalTabs.length > 1) {
+              // Leave one tab open (the last one), close the rest
+              tabsToClose.push(...normalTabs.slice(0, -1).map(tab => tab.id));
+            }
+          });
+
+          // Remove tabs safely (if any)
+          if (tabsToClose.length > 0) {
+            await new Promise(resolve => chrome.tabs.remove(tabsToClose, resolve));
+          }
+
+          // Open all session tabs (deduplicated by URL)
           const seen = new Set();
           let createdTabIds = [];
           for (const tab of sessionTabs) {
             if (!tab.url || seen.has(tab.url)) continue;
             seen.add(tab.url);
             try {
-              const created = await chrome.tabs.create({url: tab.url});
-              createdTabIds.push(created.id);
+              const created = await new Promise((resolve) => {
+                chrome.tabs.create({url: tab.url}, t => {
+                  if (chrome.runtime.lastError) {
+                    console.warn('Could not open tab:', tab.url, chrome.runtime.lastError);
+                    resolve(null);
+                  } else {
+                    resolve(t);
+                  }
+                });
+              });
+              if (created && created.id) createdTabIds.push(created.id);
             } catch (e) {
-              // Handle errors (e.g., permission, blocked URLs)
               console.warn('Could not open tab:', tab.url, e);
             }
           }
-          // Instead of closing the previously active tab, update it to chrome://newtab
-          if (activeTab && activeTab.id) {
-            chrome.tabs.update(activeTab.id, {url: 'chrome://newtab'});
+
+          // Switch to the first restored tab
+          if (createdTabIds.length > 0) {
+            chrome.tabs.update(createdTabIds[0], {active: true});
           }
-          // Switch to the tab that was active when the session was saved
-          if (createdTabIds.length > 0 && activeTabIndex >= 0 && activeTabIndex < createdTabIds.length) {
-            chrome.tabs.update(createdTabIds[activeTabIndex], {active: true});
-          }
-          sendResponse({status: 'success', sessionName, count: seen.size});
-        });
+
+          sendResponse({status: 'success', sessionName, count: createdTabIds.length});
+        } catch (err) {
+          console.error('Session restore failed:', err);
+          sendResponse({status: 'error', message: err.message});
+        }
       });
     });
     return true;
