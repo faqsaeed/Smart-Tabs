@@ -1,3 +1,4 @@
+console.log("[TabTrackr] GET_TRACKING_DATA", tabTimes);
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ tabSessions: {} });
 });
@@ -82,5 +83,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (request.type === 'START_TRACKING') {
+    trackingActive = true;
+    tabTimes = {};
+    trackingStartTime = Date.now();
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      if (tabs.length > 0) {
+        const tab = tabs[0];
+        tabTimes[tab.id] = { start: Date.now(), total: 0, title: tab.title, url: tab.url };
+        console.log('[TabTrackr] Started tracking tab:', tab.id, tab.title, tab.url);
+      }
+    });
+    sendResponse({status: 'tracking_started'});
+    return true;
   }
-);
+});
+
+chrome.tabs.onActivated.addListener(activeInfo => {
+  if (!trackingActive) return;
+  const now = Date.now();
+  Object.keys(tabTimes).forEach(tabId => {
+    if (tabTimes[tabId].start) {
+      tabTimes[tabId].total += now - tabTimes[tabId].start;
+      tabTimes[tabId].start = null;
+      console.log('[TabTrackr] Paused tab:', tabId, 'Total:', tabTimes[tabId].total);
+    }
+  });
+  tabTimes[activeInfo.tabId] = tabTimes[activeInfo.tabId] || { total: 0 };
+  tabTimes[activeInfo.tabId].start = now;
+  chrome.tabs.get(activeInfo.tabId, tab => {
+    if (tab) {
+      tabTimes[activeInfo.tabId].title = tab.title;
+      tabTimes[activeInfo.tabId].url = tab.url;
+      console.log('[TabTrackr] Started tracking new active tab:', activeInfo.tabId, tab.title, tab.url);
+    }
+  });
+});
