@@ -5,7 +5,6 @@
 importScripts('shared/ai.js', 'shared/chromeUtils.js');
 
 // In-memory session and tracking data
-let savedSessions = {};
 let trackingActive = false;
 let tabTimes = {}; // { tabId: { start: timestamp, total: ms } }
 let trackingStartTime = null;
@@ -23,7 +22,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Save all tabs in all windows, and store the active tab index
     chrome.tabs.query({}, (tabs) => {
       chrome.tabs.query({active: true, currentWindow: true}, (activeTabs) => {
-        const sessionTabs = tabs.map(tab => ({title: tab.title, url: tab.url, windowId: tab.windowId, id: tab.id}));
+        const sessionTabs = tabs
+          .filter(tab => tab && tab.url)
+          .map(tab => ({
+            title: tab.title || '',
+            url: tab.url,
+            windowId: tab.windowId,
+            id: tab.id
+          }));
         const activeTabId = activeTabs.length > 0 ? activeTabs[0].id : null;
         const activeTabIndex = sessionTabs.findIndex(tab => tab.id === activeTabId);
         const sessionName = request.sessionName || `Session-${Date.now()}`;
@@ -39,78 +45,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   } else if (request.type === 'RESTORE_SESSION') {
     // --- Robust, Safe Session Restore Logic ---
-    chrome.storage.local.get(['tabSessions'], async (result) => {
+    chrome.storage.local.get(['tabSessions'], (result) => {
       const tabSessions = result.tabSessions || {};
       const sessionName = request.sessionName || Object.keys(tabSessions).pop();
       const sessionData = tabSessions[sessionName];
       if (!sessionData) {
-        console.error('No session data found for', sessionName);
         sendResponse({status: 'error', message: 'No session data found'});
         return;
       }
-      // Support both {tabs, activeTabIndex} and legacy [{title, url}]
-      const sessionTabs = Array.isArray(sessionData) ? sessionData : sessionData.tabs || [];
-      chrome.tabs.query({}, async (allTabs) => {
-        try {
-          const extensionUrl = chrome.runtime.getURL('');
-          // Group tabs by windowId
-          const tabsByWindow = {};
-          allTabs.forEach(tab => {
-            if (!tabsByWindow[tab.windowId]) tabsByWindow[tab.windowId] = [];
-            tabsByWindow[tab.windowId].push(tab);
-          });
-
-          let tabsToClose = [];
-          Object.values(tabsByWindow).forEach(tabsInWindow => {
-            // Exclude pinned and extension tabs
-            const normalTabs = tabsInWindow.filter(tab =>
-              !tab.pinned &&
-              !(tab.url && tab.url.startsWith(extensionUrl))
-            );
-            // If only one normal tab left, don't close it (leave one tab per window)
-            if (normalTabs.length > 1) {
-              // Leave one tab open (the last one), close the rest
-              tabsToClose.push(...normalTabs.slice(0, -1).map(tab => tab.id));
-            }
-          });
-
-          // Remove tabs safely (if any)
-          if (tabsToClose.length > 0) {
-            await new Promise(resolve => chrome.tabs.remove(tabsToClose, resolve));
-          }
-
-          // Open all session tabs (deduplicated by URL)
-          const seen = new Set();
-          let createdTabIds = [];
-          for (const tab of sessionTabs) {
-            if (!tab.url || seen.has(tab.url)) continue;
-            seen.add(tab.url);
-            try {
-              const created = await new Promise((resolve) => {
-                chrome.tabs.create({url: tab.url}, t => {
-                  if (chrome.runtime.lastError) {
-                    console.warn('Could not open tab:', tab.url, chrome.runtime.lastError);
-                    resolve(null);
-                  } else {
-                    resolve(t);
-                  }
-                });
-              });
-              if (created && created.id) createdTabIds.push(created.id);
-            } catch (e) {
-              console.warn('Could not open tab:', tab.url, e);
-            }
-          }
-
-          // Switch to the first restored tab
-          if (createdTabIds.length > 0) {
-            chrome.tabs.update(createdTabIds[0], {active: true});
-          }
-
-          sendResponse({status: 'success', sessionName, count: createdTabIds.length});
-        } catch (err) {
-          console.error('Session restore failed:', err);
-          sendResponse({status: 'error', message: err.message});
+      const sessionTabs = Array.isArray(sessionData)
+        ? sessionData
+        : Array.isArray(sessionData.tabs)
+          ? sessionData.tabs
+          : [];
+      if (!sessionTabs.length) {
+        sendResponse({status: 'error', message: 'No tabs to restore'});
+        return;
+      }
+      const urls = sessionTabs
+        .map(tab => (tab && typeof tab.url === 'string' ? tab.url : null))
+        .filter(Boolean);
+      if (!urls.length) {
+        sendResponse({status: 'error', message: 'No valid URLs to restore'});
+        return;
+      }
+      chrome.windows.create({url: urls}, win => {
+        if (chrome.runtime.lastError) {
+          sendResponse({status: 'error', message: chrome.runtime.lastError.message});
+        } else {
+          sendResponse({status: 'success', sessionName, count: urls.length});
         }
       });
     });
@@ -186,4 +149,3 @@ chrome.tabs.onRemoved.addListener(tabId => {
   if (tabTimes[tabId]) delete tabTimes[tabId];
 });
 
-// TODO: Implement session storage and tracking logic 
