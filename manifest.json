@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Smart Tabs",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Group, save, restore, and track your Chrome tabs with AI. Now with advanced session management, tab usage tracking (active time only), and a modern, user-friendly UI.",
   "permissions": [
     "tabs",
