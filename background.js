@@ -1,4 +1,3 @@
-console.log("[TabTrackr] GET_TRACKING_DATA", tabTimes);
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ tabSessions: {} });
 });
