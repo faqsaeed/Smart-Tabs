@@ -73,12 +73,16 @@ self.handleSessionMessage = function(request, sendResponse) {
         return;
       }
       console.log(`[TabTrackr] Attempting to open ${urls.length} tabs in a new window for session "${sessionName}"`);
-      chrome.windows.create({url: urls}, win => {
+      chrome.windows.create({url: urls, focused: true}, win => {
         if (chrome.runtime.lastError) {
+          console.error('[TabTrackr] Error creating window:', chrome.runtime.lastError);
           sendResponse({status: 'error', message: chrome.runtime.lastError.message});
         } else {
           console.log(`[TabTrackr] Successfully restored session "${sessionName}" with ${urls.length} tabs in window ${win.id}`);
-          sendResponse({status: 'success', sessionName, count: urls.length});
+          // Ensure the new window gets focus
+          chrome.windows.update(win.id, {focused: true}, () => {
+            sendResponse({status: 'success', message: `Session "${sessionName}" restored with ${urls.length} tabs`});
+          });
         }
       });
     });
