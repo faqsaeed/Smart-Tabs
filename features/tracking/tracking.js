@@ -55,13 +55,13 @@ window.initTracking = function(container, onBack) {
   document.getElementById('startTrackingBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'START_TRACKING'}, () => {
       setStatus('Tracking started.');
-      showResults();
+      // Do not show results automatically
     });
   };
   document.getElementById('stopTrackingBtn').onclick = () => {
     chrome.runtime.sendMessage({type: 'STOP_TRACKING'}, () => {
       setStatus('Tracking stopped.');
-      showResults();
+      // Do not show results automatically
     });
   };
   document.getElementById('viewResultsBtn').onclick = function() {
@@ -116,5 +116,5 @@ window.initTracking = function(container, onBack) {
       }
     });
   }
-  showResults();
+  // Remove: showResults();
 } 
