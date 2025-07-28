@@ -1,3 +1,7 @@
+let trackingActive = false;
+let tabTimes = {};
+let trackingStartTime = null;
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ tabSessions: {} });
 });
