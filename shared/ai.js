@@ -34,8 +34,7 @@ self.groupTabsWithAI = async function(tabs) {
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
     });
