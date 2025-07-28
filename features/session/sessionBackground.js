@@ -1,12 +1,18 @@
 // features/session/sessionBackground.js
 
-export function handleSessionMessage(request, sendResponse) {
+self.handleSessionMessage = function(request, sendResponse) {
   if (request.type === 'SAVE_SESSION') {
     chrome.tabs.query({}, (tabs) => {
-      const tabData = tabs.map(tab => ({
-        url: tab.url,
-        pinned: tab.pinned
-      }));
+      const tabData = tabs
+        .filter(tab => tab && typeof tab.url === 'string' && tab.url.startsWith('http'))
+        .map(tab => ({
+          url: tab.url,
+          pinned: tab.pinned
+        }));
+      if (!tabData.length) {
+        sendResponse({ status: 'error', message: 'No valid tabs to save' });
+        return;
+      }
       const sessionName = request.sessionName || new Date().toISOString();
       chrome.storage.local.get(['tabSessions'], (result) => {
         const tabSessions = result.tabSessions || {};
@@ -53,9 +59,15 @@ export function handleSessionMessage(request, sendResponse) {
         sendResponse({status: 'error', message: 'No tabs to restore'});
         return;
       }
+      // Deduplicate URLs
+      const seen = new Set();
       const urls = sessionTabs
-        .map(tab => (tab && typeof tab.url === 'string' ? tab.url : null))
-        .filter(Boolean);
+        .map(tab => (tab && typeof tab.url === 'string' && tab.url.startsWith('http') ? tab.url : null))
+        .filter(url => {
+          if (!url || seen.has(url)) return false;
+          seen.add(url);
+          return true;
+        });
       if (!urls.length) {
         sendResponse({status: 'error', message: 'No valid URLs to restore'});
         return;
@@ -73,4 +85,4 @@ export function handleSessionMessage(request, sendResponse) {
     return true;
   }
   return false;
-} 
+}; 

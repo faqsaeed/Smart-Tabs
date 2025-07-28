@@ -4,19 +4,35 @@ let trackingActive = false;
 let tabTimes = {};
 let trackingStartTime = null;
 
-export function handleTrackingMessage(request, sendResponse) {
+function saveTrackingData() {
+  chrome.storage.local.set({ tabTimes });
+}
+
+function loadTrackingData(callback) {
+  chrome.storage.local.get(['tabTimes'], (result) => {
+    tabTimes = result.tabTimes || {};
+    if (callback) callback();
+  });
+}
+
+self.handleTrackingMessage = function(request, sendResponse) {
   if (request.type === 'START_TRACKING') {
     trackingActive = true;
-    tabTimes = {};
-    trackingStartTime = Date.now();
-    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-      if (tabs.length > 0) {
-        const tab = tabs[0];
-        tabTimes[tab.id] = { start: Date.now(), total: 0, title: tab.title, url: tab.url };
-        console.log('[TabTrackr] Started tracking tab:', tab.id, tab.title, tab.url);
-      }
+    loadTrackingData(() => {
+      trackingStartTime = Date.now();
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs.length > 0) {
+          const tab = tabs[0];
+          tabTimes[tab.id] = tabTimes[tab.id] || { total: 0 };
+          tabTimes[tab.id].start = Date.now();
+          tabTimes[tab.id].title = tab.title;
+          tabTimes[tab.id].url = tab.url;
+          console.log('[TabTrackr] Started tracking tab:', tab.id, tab.title, tab.url);
+        }
+        saveTrackingData();
+        sendResponse({status: 'tracking_started'});
+      });
     });
-    sendResponse({status: 'tracking_started'});
     return true;
   }
   if (request.type === 'STOP_TRACKING') {
@@ -27,31 +43,36 @@ export function handleTrackingMessage(request, sendResponse) {
         tabTimes[tabId].start = null;
       }
     });
+    saveTrackingData();
     sendResponse({status: 'tracking_stopped'});
     return true;
   }
   if (request.type === 'GET_TRACKING_DATA') {
-    const data = Object.values(tabTimes).map(tab => ({
-      title: tab.title,
-      url: tab.url,
-      seconds: Math.round((tab.total || 0) / 1000)
-    }));
-    sendResponse({status: 'success', data});
+    loadTrackingData(() => {
+      const data = Object.values(tabTimes).map(tab => ({
+        title: tab.title,
+        url: tab.url,
+        seconds: Math.round((tab.total || 0) / 1000)
+      }));
+      sendResponse({status: 'success', data});
+    });
     return true;
   }
   if (request.type === 'EXPORT_CSV') {
-    let csv = 'Tab Title,Tab URL,Time Spent (seconds)\n';
-    Object.values(tabTimes).forEach(tab => {
-      const seconds = Math.round((tab.total || 0) / 1000);
-      csv += `"${tab.title}","${tab.url}",${seconds}\n`;
+    loadTrackingData(() => {
+      let csv = 'Tab Title,Tab URL,Time Spent (seconds)\n';
+      Object.values(tabTimes).forEach(tab => {
+        const seconds = Math.round((tab.total || 0) / 1000);
+        csv += `"${tab.title}","${tab.url}",${seconds}\n`;
+      });
+      sendResponse({status: 'csv', csv});
     });
-    sendResponse({status: 'csv', csv});
     return true;
   }
   return false;
-}
+};
 
-export function trackingTabActivated(activeInfo) {
+self.trackingTabActivated = function(activeInfo) {
   if (!trackingActive) return;
   const now = Date.now();
   Object.keys(tabTimes).forEach(tabId => {
@@ -69,5 +90,35 @@ export function trackingTabActivated(activeInfo) {
       tabTimes[activeInfo.tabId].url = tab.url;
       console.log('[TabTrackr] Started tracking new active tab:', activeInfo.tabId, tab.title, tab.url);
     }
+    saveTrackingData();
   });
-} 
+};
+
+chrome.windows && chrome.windows.onFocusChanged && chrome.windows.onFocusChanged.addListener(function(windowId) {
+  if (!trackingActive) return;
+  const now = Date.now();
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    // All Chrome windows lost focus, pause all
+    Object.keys(tabTimes).forEach(tabId => {
+      if (tabTimes[tabId].start) {
+        tabTimes[tabId].total += now - tabTimes[tabId].start;
+        tabTimes[tabId].start = null;
+      }
+    });
+    saveTrackingData();
+  } else {
+    // A window gained focus, resume active tab
+    chrome.windows.get(windowId, {populate: true}, (win) => {
+      if (win && win.focused) {
+        const activeTab = win.tabs.find(tab => tab.active);
+        if (activeTab) {
+          tabTimes[activeTab.id] = tabTimes[activeTab.id] || { total: 0 };
+          tabTimes[activeTab.id].start = now;
+          tabTimes[activeTab.id].title = activeTab.title;
+          tabTimes[activeTab.id].url = activeTab.url;
+        }
+        saveTrackingData();
+      }
+    });
+  }
+}); 
