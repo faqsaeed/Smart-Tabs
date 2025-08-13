@@ -9,6 +9,7 @@ Planned features include automatic tab grouping powered by local NLP or OpenAI G
 ## 📋 Features
 
 ### ✅ Implemented
+
 - **Tab Usage Tracking**
   - Measures *active focus time* for each tab (only counts when the tab is selected).
   - Useful for productivity analysis and time management.
@@ -20,6 +21,7 @@ Planned features include automatic tab grouping powered by local NLP or OpenAI G
   - Sessions are stored locally for privacy.
 
 ### 🚧 Under Development
+
 - **Smart Tab Grouping**
   - Automatically categorizes open tabs into Chrome tab groups.
   - Will support **local NLP** (offline) and **OpenAI GPT** (high accuracy).
@@ -52,13 +54,13 @@ Planned features include automatic tab grouping powered by local NLP or OpenAI G
 
     - Go to `chrome://extensions/`
 
-    -  Enable Developer mode (toggle in the top right).
+    - Enable Developer mode (toggle in the top right).
 
 3. **Load unpacked extension**
 
     - Click Load unpacked
 
-    -   Select the cloned project folder.
+    - Select the cloned project folder.
 
 4. **Start using Smart Tabs**
 
@@ -68,19 +70,19 @@ Planned features include automatic tab grouping powered by local NLP or OpenAI G
 
 ## ⚙️ Configuration
 
-  - **Session Data** – Stored locally via Chrome Storage API.
+- **Session Data** – Stored locally via Chrome Storage API.
 
-  - **Tab Tracking** – Only counts time when tab is actively focused.
+- **Tab Tracking** – Only counts time when tab is actively focused.
 
 ---
 
 ## 🧪 Testing
 
-  - **Manual Testing**
+- **Manual Testing**
 
-      - Usage tracking verified with active/busy browser patterns.
+  - Usage tracking verified with active/busy browser patterns.
 
-      -  Session saving and restoration tested with multiple named sessions.
+  - Session saving and restoration tested with multiple named sessions.
 
 ---
 
